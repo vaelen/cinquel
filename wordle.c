@@ -5,8 +5,10 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "words.c"
 
@@ -112,6 +114,81 @@ int has_any_letters(const char *word, unsigned int mask)
     return 0;
 }
 
+/* Add a wrong position for a letter */
+void add_wrong_position(unsigned int *wrong_pos, char c, int position)
+{
+    if (c >= 'a' && c <= 'z' && position >= 0 && position < 5) {
+        wrong_pos[c - 'a'] |= (1U << position);
+    }
+}
+
+/* Check if a letter has a known wrong position */
+int has_wrong_position(unsigned int *wrong_pos, char c, int position)
+{
+    if (c >= 'a' && c <= 'z' && position >= 0 && position < 5) {
+        return (wrong_pos[c - 'a'] >> position) & 1;
+    }
+    return 0;
+}
+
+/* Check if word violates any wrong position constraints */
+int violates_wrong_positions(const char *word, unsigned int *wrong_pos)
+{
+    int i;
+    for (i = 0; i < 5; i++) {
+        if (has_wrong_position(wrong_pos, word[i], i)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Process a guess word: derive incorrect letters and wrong positions */
+void process_guess(const char *guess, const char *correct_str, const char *pat,
+                   unsigned int *incorrect, unsigned int *correct,
+                   unsigned int *wrong_pos)
+{
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        char c = guess[i];
+        if (char_in_str(c, correct_str)) {
+            /* Letter is correct (yellow or green) */
+            add_letter(correct, c);
+            /* If pattern doesn't have this letter at this position, it's a wrong position */
+            if (pat[i] != c) {
+                add_wrong_position(wrong_pos, c, i);
+            }
+        } else {
+            /* Letter is incorrect (gray) */
+            add_letter(incorrect, c);
+        }
+    }
+}
+
+/* Print wrong positions for debugging */
+void print_wrong_positions(unsigned int *wrong_pos)
+{
+    char c;
+    int i;
+    int any = 0;
+    for (c = 'a'; c <= 'z'; c++) {
+        if (wrong_pos[c - 'a'] != 0) {
+            if (any) printf(", ");
+            printf("%c:", c);
+            for (i = 0; i < 5; i++) {
+                if (has_wrong_position(wrong_pos, c, i)) {
+                    printf("%d", i + 1);
+                }
+            }
+            any = 1;
+        }
+    }
+    if (!any) {
+        printf("(none)");
+    }
+}
+
 /* Get frequency score for a letter (higher = more common) */
 int letter_score(char c)
 {
@@ -166,13 +243,69 @@ void strip_newline(char *str)
     }
 }
 
+/* Print suggestion words */
+void print_suggestions(int *top_scores, int *top_indices)
+{
+    int i;
+    printf("\n=== SUGGESTION WORDS (maximize letter frequency) ===\n");
+    for (i = 0; i < MAX_SUGGESTIONS; i++) {
+        if (top_indices[i] >= 0) {
+            printf("%d. %s (score: %d)\n",
+                   i + 1, words[top_indices[i]], top_scores[i]);
+        }
+    }
+}
+
+/* Print matching words */
+void print_matches(int *match_scores, int *match_indices, int match_count)
+{
+    int i;
+    printf("\n=== MATCHING WORDS ===\n");
+    for (i = 0; i < MAX_MATCHES; i++) {
+        if (match_indices[i] >= 0) {
+            printf("%s (score: %d)\n", words[match_indices[i]], match_scores[i]);
+        }
+    }
+    printf("\nTotal: %d matching words\n", match_count);
+}
+
+/* Print suggested next guess */
+void print_next_guess(int match_count, int *match_indices, int *top_indices,
+                      int guess_number)
+{
+    printf("\n");
+    if (match_count <= 5 && match_indices != NULL) {
+        /* 5 or fewer matches: guess highest scored match */
+        if (match_indices[0] >= 0) {
+            printf("My next guess is %s.\n", words[match_indices[0]]);
+        }
+    } else if (guess_number == 1) {
+        /* First guess: always 'neato' */
+        printf("My next guess is neato.\n");
+    } else if (guess_number == 2) {
+        /* Second guess: always 'lurid' */
+        printf("My next guess is lurid.\n");
+    } else {
+        /* Third guess onwards: random from top 5 suggestions */
+        int rand_idx = rand() % MAX_SUGGESTIONS;
+        if (top_indices[rand_idx] >= 0) {
+            printf("My next guess is %s.\n", words[top_indices[rand_idx]]);
+        } else if (top_indices[0] >= 0) {
+            printf("My next guess is %s.\n", words[top_indices[0]]);
+        }
+    }
+}
+
 int main(void)
 {
     unsigned int incorrect = 0;
     unsigned int correct = 0;
+    unsigned int wrong_position[26];  /* Bitmask per letter, bits 0-4 = positions */
     unsigned int used;
     char pattern[MAX_INPUT];
     char input[MAX_INPUT];
+    char guess[MAX_INPUT];
+    char correct_str[MAX_INPUT];
     char choice;
 
     /* For tracking top suggestions */
@@ -185,30 +318,58 @@ int main(void)
 
     int i, j, k;
     int match_count;
-    int first_round = 1;
+    int guess_number = 1;
 
     /* Initialize */
+    srand((unsigned int)time(NULL));
     strcpy(pattern, ".....");
+    for (i = 0; i < 26; i++) {
+        wrong_position[i] = 0;
+    }
 
     while (1) {
         match_count = 0;
 
-        if (first_round) {
-            /* Get initial inputs */
-            printf("Enter incorrect letters (or press Enter for none): ");
-            fflush(stdout);
-            if (fgets(input, MAX_INPUT, stdin)) {
-                strip_newline(input);
-                to_lower(input);
-                add_letters_from_string(&incorrect, input);
+        if (guess_number == 1) {
+            /* Show initial suggestions before first guess */
+            used = incorrect | correct;
+            for (i = 0; i < MAX_SUGGESTIONS; i++) {
+                top_scores[i] = -1;
+                top_indices[i] = -1;
             }
+            for (i = 0; i < WORD_COUNT; i++) {
+                int score = score_word(words[i], used);
+                for (j = 0; j < MAX_SUGGESTIONS; j++) {
+                    if (score > top_scores[j]) {
+                        for (k = MAX_SUGGESTIONS - 1; k > j; k--) {
+                            top_scores[k] = top_scores[k-1];
+                            top_indices[k] = top_indices[k-1];
+                        }
+                        top_scores[j] = score;
+                        top_indices[j] = i;
+                        break;
+                    }
+                }
+            }
+            print_suggestions(top_scores, top_indices);
+            print_next_guess(WORD_COUNT, NULL, top_indices, guess_number);
+            printf("\n");
 
-            printf("Enter correct letters (or press Enter for none): ");
+            /* Get initial inputs */
+            do {
+                printf("Enter guess word (5 letters): ");
+                fflush(stdout);
+                if (fgets(guess, MAX_INPUT, stdin)) {
+                    strip_newline(guess);
+                    to_lower(guess);
+                }
+            } while (strlen(guess) != 5);
+
+            printf("Enter correct letters from guess (or press Enter for none): ");
             fflush(stdout);
-            if (fgets(input, MAX_INPUT, stdin)) {
-                strip_newline(input);
-                to_lower(input);
-                add_letters_from_string(&correct, input);
+            if (fgets(correct_str, MAX_INPUT, stdin)) {
+                strip_newline(correct_str);
+                to_lower(correct_str);
             }
         } else {
             /* Show current state */
@@ -219,35 +380,48 @@ int main(void)
             printf("Correct letters: ");
             print_letters(correct);
             printf("\n");
+            printf("Wrong positions: ");
+            print_wrong_positions(wrong_position);
+            printf("\n");
+            printf("Pattern: %s\n", pattern);
 
             /* Get additional inputs */
-            printf("\nEnter additional incorrect letters (or press Enter for none): ");
-            fflush(stdout);
-            if (fgets(input, MAX_INPUT, stdin)) {
-                strip_newline(input);
-                to_lower(input);
-                add_letters_from_string(&incorrect, input);
-            }
+            do {
+                printf("\nEnter new guess word (5 letters): ");
+                fflush(stdout);
+                if (fgets(guess, MAX_INPUT, stdin)) {
+                    strip_newline(guess);
+                    to_lower(guess);
+                }
+            } while (strlen(guess) != 5);
 
-            printf("Enter additional correct letters (or press Enter for none): ");
+            printf("Enter correct letters from guess (or press Enter for none): ");
             fflush(stdout);
-            if (fgets(input, MAX_INPUT, stdin)) {
-                strip_newline(input);
-                to_lower(input);
-                add_letters_from_string(&correct, input);
+            if (fgets(correct_str, MAX_INPUT, stdin)) {
+                strip_newline(correct_str);
+                to_lower(correct_str);
             }
         }
 
-        printf("Enter known pattern (use . for unknown, e.g., '.o..y'): ");
-        fflush(stdout);
-        if (fgets(pattern, MAX_INPUT, stdin)) {
-            strip_newline(pattern);
-            to_lower(pattern);
-            /* Ensure pattern is exactly 5 characters */
-            if (strlen(pattern) != 5) {
-                printf("Warning: Pattern should be 5 characters. Using '.....' instead.\n");
-                strcpy(pattern, ".....");
+        /* Only ask for positions if some letters were correct */
+        if (strlen(correct_str) > 0) {
+            printf("Enter correct positions (1-5, e.g., '14' for positions 1 and 4, or Enter for none): ");
+            fflush(stdout);
+            if (fgets(input, MAX_INPUT, stdin)) {
+                strip_newline(input);
+                /* Update pattern based on position digits */
+                for (i = 0; input[i]; i++) {
+                    if (input[i] >= '1' && input[i] <= '5') {
+                        int pos = input[i] - '1';
+                        pattern[pos] = guess[pos];
+                    }
+                }
             }
+        }
+
+        /* Process the guess to derive incorrect letters and wrong positions */
+        if (strlen(guess) == 5) {
+            process_guess(guess, correct_str, pattern, &incorrect, &correct, wrong_position);
         }
 
         /* Build used letters set */
@@ -280,13 +454,7 @@ int main(void)
         }
 
         /* Print suggestion words */
-        printf("\n=== SUGGESTION WORDS (maximize letter frequency) ===\n");
-        for (i = 0; i < MAX_SUGGESTIONS; i++) {
-            if (top_indices[i] >= 0) {
-                printf("%d. %s (score: %d)\n",
-                       i + 1, words[top_indices[i]], top_scores[i]);
-            }
-        }
+        print_suggestions(top_scores, top_indices);
 
         /* Initialize match tracking */
         for (i = 0; i < MAX_MATCHES; i++) {
@@ -309,6 +477,9 @@ int main(void)
             if (has_any_letters(word, incorrect)) {
                 continue;
             }
+            if (violates_wrong_positions(word, wrong_position)) {
+                continue;
+            }
 
             match_count++;
             score = score_word(word, used);
@@ -329,14 +500,10 @@ int main(void)
         }
 
         /* Print matching words sorted by score */
-        printf("\n=== MATCHING WORDS ===\n");
-        for (i = 0; i < MAX_MATCHES; i++) {
-            if (match_indices[i] >= 0) {
-                printf("%s (score: %d)\n", words[match_indices[i]], match_scores[i]);
-            }
-        }
+        print_matches(match_scores, match_indices, match_count);
 
-        printf("\nTotal: %d matching words\n", match_count);
+        /* Print suggested next guess */
+        print_next_guess(match_count, match_indices, top_indices, guess_number + 1);
 
         /* Prompt for next action */
         printf("\nWhat would you like to do? (c)ontinue the game, start a (n)ew game, or (q)uit? ");
@@ -350,13 +517,16 @@ int main(void)
                 incorrect = 0;
                 correct = 0;
                 strcpy(pattern, ".....");
-                first_round = 1;
+                for (i = 0; i < 26; i++) {
+                    wrong_position[i] = 0;
+                }
+                guess_number = 1;
                 printf("\n=== STARTING NEW GAME ===\n\n");
             } else if (choice == 'c') {
-                first_round = 0;
+                guess_number++;
             } else {
                 /* Default to continue */
-                first_round = 0;
+                guess_number++;
             }
         } else {
             break;  /* EOF */
