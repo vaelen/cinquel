@@ -1,6 +1,7 @@
 /*
  * Wordle Helper Program
  * ANSI C89 compatible
+ * Copyright (c) 2025, Andrew C. Young
  */
 
 #include <stdio.h>
@@ -11,6 +12,7 @@
 
 #define MAX_INPUT 27  /* 26 letters + null terminator */
 #define MAX_SUGGESTIONS 5
+#define MAX_MATCHES 10
 
 /* Check if a character is in a string */
 int char_in_str(char c, const char *str)
@@ -177,7 +179,11 @@ int main(void)
     int top_scores[MAX_SUGGESTIONS];
     int top_indices[MAX_SUGGESTIONS];
 
-    int i, j;
+    /* For tracking top matches */
+    int match_scores[MAX_MATCHES];
+    int match_indices[MAX_MATCHES];
+
+    int i, j, k;
     int match_count;
     int first_round = 1;
 
@@ -282,10 +288,16 @@ int main(void)
             }
         }
 
-        /* Find and print matching words */
-        printf("\n=== MATCHING WORDS ===\n");
+        /* Initialize match tracking */
+        for (i = 0; i < MAX_MATCHES; i++) {
+            match_scores[i] = -1;
+            match_indices[i] = -1;
+        }
+
+        /* Find matching words and track top by score */
         for (i = 0; i < WORD_COUNT; i++) {
             const char *word = words[i];
+            int score;
 
             /* Check all conditions */
             if (!matches_pattern(word, pattern)) {
@@ -299,8 +311,28 @@ int main(void)
             }
 
             match_count++;
-            if (match_count <= 10) {
-                printf("%s\n", word);
+            score = score_word(word, used);
+
+            /* Check if this score makes it into top matches */
+            for (j = 0; j < MAX_MATCHES; j++) {
+                if (score > match_scores[j]) {
+                    /* Shift lower scores down */
+                    for (k = MAX_MATCHES - 1; k > j; k--) {
+                        match_scores[k] = match_scores[k-1];
+                        match_indices[k] = match_indices[k-1];
+                    }
+                    match_scores[j] = score;
+                    match_indices[j] = i;
+                    break;
+                }
+            }
+        }
+
+        /* Print matching words sorted by score */
+        printf("\n=== MATCHING WORDS ===\n");
+        for (i = 0; i < MAX_MATCHES; i++) {
+            if (match_indices[i] >= 0) {
+                printf("%s (score: %d)\n", words[match_indices[i]], match_scores[i]);
             }
         }
 
