@@ -42,30 +42,38 @@ Press **Enter** with an empty guess to pause the game, where you can continue, s
 
 ```
 === SUGGESTION WORDS (maximize letter frequency) ===
-1. oater (score: 120)
-2. orate (score: 120)
-3. arose (score: 118)
-4. stoae (score: 116)
-5. toeas (score: 116)
+1. atone (score: 119)
+2. neato (score: 119)
+3. oaten (score: 119)
+4. stoae (score: 118)
+5. orate (score: 117)
 
 My next guess is neato.
 
 Enter guess word (5 letters, or press Enter to quit): neato
-Enter correct letters from guess (or press Enter for none): te
-Enter correct positions (1-5, e.g., '14' for positions 1 and 4, or Enter for none):
+Enter correct letters from guess (or press Enter for none): et
+Enter correct positions (1-5, e.g., '14' for positions 1 and 4, or Enter for none): 
 
 === SUGGESTION WORDS (maximize letter frequency) ===
-1. girls (score: 72)
-2. grils (score: 72)
-3. curls (score: 70)
-4. hurls (score: 70)
-5. sirly (score: 70)
+1. scrim (score: 89)
+2. girls (score: 88)
+3. child (score: 88)
+4. lurid (score: 88)
+5. drips (score: 88)
 
 === MATCHING WORDS ===
-steel (score: 14)
-steep (score: 14)
-steed (score: 14)
-...
+tries (score: 61)
+tires (score: 61)
+rites (score: 61)
+tiers (score: 61)
+their (score: 59)
+tiles (score: 59)
+stile (score: 59)
+islet (score: 59)
+lites (score: 59)
+liest (score: 59)
+
+Total: 157 matching words
 
 My next guess is lurid.
 ```
