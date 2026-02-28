@@ -21,7 +21,7 @@ The program maintains a database of 5,757 five-letter words and uses a two-stage
 1. **Suggestion words** - Maximizes coverage of untried letters, weighted by English letter frequency (e, t, a, o, ... are worth more). Used for early exploratory guesses.
 2. **Matching words** - Filters the full word list against all known constraints (correct positions, required letters, eliminated letters, wrong-position constraints). Once 5 or fewer matches remain, it suggests the highest-scored match directly.
 
-The default opening strategy is **neato** followed by **lurid**, which together cover 10 of the most common letters.
+The default opening strategy is **neato** followed by **lurid**, which together cover 10 of the most common letters, including all 5 vowels.
 
 ## Usage
 
