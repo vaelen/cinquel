@@ -1,7 +1,9 @@
 /*
  * Wordle Helper Program
  * ANSI C89 compatible
- * Copyright (c) 2025, Andrew C. Young
+ *
+ * Copyright (c) 2026 Andrew C. Young
+ * Licensed under the MIT License. See LICENSE file for details.
  */
 
 #include <stdio.h>
