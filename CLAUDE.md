@@ -25,16 +25,16 @@ Note: `cinquel.c` includes `words.c` directly via `#include`, not as a separate 
 
 ## Core Architecture
 
-### Global State
+### Game State
 
-The program uses global variables for persistent game state (since this is a single-threaded interactive application):
+Game state is encapsulated in a `GameState` struct (allocated on the stack in `main()` and passed by pointer to functions that need it):
 - `guess_number` - Current guess number (1-based)
 - `incorrect` - Bitmask of incorrect letters
 - `correct` - Bitmask of correct letters
 - `wrong_position[26]` - Per-letter position constraints (5 bits each for positions 0-4)
 - `pattern` - The pattern being built (e.g., "..a..")
 
-Call `reset_game()` to reset all state for a new game.
+Call `reset_game(&game)` to reset all state for a new game.
 
 ### Data Representation
 
