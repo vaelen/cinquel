@@ -1,5 +1,5 @@
 /*
- * Wordle Helper Program
+ * Cinquel Helper Program
  * ANSI C89 compatible
  *
  * Copyright (c) 2026 Andrew C. Young

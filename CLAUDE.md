@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Wordle helper program written in ANSI C89. It assists users in solving Wordle puzzles by suggesting optimal guesses and filtering possible answers based on game feedback.
+An interactive command-line tool that helps you solve five-letter word puzzles. It suggests optimal guesses based on letter frequency analysis and narrows down possible answers as you provide feedback from each round.
 
 ## Building and Running
 
 ```bash
 make          # Compile the program
-./wordle      # Run the wordle helper
+./cinquel     # Run the cinquel helper
 make clean    # Remove compiled binary
 ```
 
@@ -18,10 +18,10 @@ The program is compiled with strict C89 compliance (`-std=c89 -pedantic -Wall -W
 
 ## Code Structure
 
-- **wordle.c** - Main program logic (interactive loop, user input, word filtering, scoring)
+- **cinquel.c** - Main program logic (interactive loop, user input, word filtering, scoring)
 - **words.c** - Word database (5757 five-letter words) and letter frequency data
 
-Note: `wordle.c` includes `words.c` directly via `#include`, not as a separate compilation unit.
+Note: `cinquel.c` includes `words.c` directly via `#include`, not as a separate compilation unit.
 
 ## Core Architecture
 

@@ -1,6 +1,6 @@
-# Wordle Helper
+# Cinquel
 
-An interactive command-line tool that helps you solve [Wordle](https://www.nytimes.com/games/wordle/index.html) puzzles. It suggests optimal guesses based on letter frequency analysis and narrows down possible answers as you provide feedback from each round.
+An interactive command-line tool that helps you solve five-letter word puzzles. It suggests optimal guesses based on letter frequency analysis and narrows down possible answers as you provide feedback from each round.
 
 Written in ANSI C89.
 
@@ -8,7 +8,7 @@ Written in ANSI C89.
 
 ```bash
 make          # Compile the program
-./wordle      # Run the wordle helper
+./cinquel     # Run the cinquel helper
 make clean    # Remove compiled binary
 ```
 
@@ -27,7 +27,7 @@ The default opening strategy is **neato** followed by **lurid**, which together 
 
 Each round, the program shows suggestions and asks you to:
 
-1. **Enter your guess** - The 5-letter word you played in Wordle.
+1. **Enter your guess** - The 5-letter word you played.
 2. **Enter correct letters** - All letters that were yellow or green (present in the answer).
 3. **Enter correct positions** - Which positions (1-5) were green (exact match).
 

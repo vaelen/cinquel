@@ -1,10 +1,10 @@
 CC = gcc
 CFLAGS = -std=c89 -pedantic -Wall -Wextra
 
-wordle: wordle.c words.c
-	$(CC) $(CFLAGS) wordle.c -o wordle
+cinquel: cinquel.c words.c
+	$(CC) $(CFLAGS) cinquel.c -o cinquel
 
 clean:
-	rm -f wordle
+	rm -f cinquel
 
 .PHONY: clean
