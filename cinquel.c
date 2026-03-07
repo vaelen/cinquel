@@ -25,6 +25,7 @@ typedef struct {
     unsigned int correct;
     unsigned int wrong_position[26];  /* Bitmask per letter, bits 0-4 = positions */
     char pattern[MAX_INPUT];
+    char guess[6];
     /* Computed results */
     char suggestions[MAX_SUGGESTIONS][6];
     int suggestion_scores[MAX_SUGGESTIONS];
@@ -286,24 +287,31 @@ void reset_game(GameState *game)
     memset(game->match_scores, 0, sizeof(game->match_scores));
     game->matches_count = 0;
     game->next_guess[0] = '\0';
+    game->guess[0] = '\0';
 }
 
 /* Get guess input from user */
-void get_guess(GameState *game, char *guess)
+void get_guess(GameState *game, char *guess, int len)
 {
+    char buf[MAX_INPUT];
+
     do {
-        printf("%sEnter%s guess word (5 letters, or press Enter to quit): ",
+        printf("%sEnter%s guess word (%d letters, or press Enter to quit): ",
                game->guess_number == 1 ? "" : "\n",
-               game->guess_number == 1 ? "" : " new");
+               game->guess_number == 1 ? "" : " new",
+               len - 1);
         fflush(stdout);
-        if (fgets(guess, MAX_INPUT, stdin)) {
-            strip_newline(guess);
-            to_lower(guess);
+        if (!fgets(buf, MAX_INPUT, stdin)) {
+            buf[0] = '\0';
+            break;
         }
-        if (is_empty(guess)) {
+        strip_newline(buf);
+        to_lower(buf);
+        if (is_empty(buf)) {
             break;  /* Allow empty input */
         }
-    } while (strlen(guess) != 5);
+    } while (strlen(buf) != (size_t)(len - 1));
+    memcpy(guess, buf, len);
 }
 
 /* Get correct letters from user */
@@ -311,7 +319,9 @@ void get_correct_letters(char *correct_str)
 {
     printf("Enter correct letters from guess (or press Enter for none): ");
     fflush(stdout);
-    if (fgets(correct_str, MAX_INPUT, stdin)) {
+    if (!fgets(correct_str, MAX_INPUT, stdin)) {
+        correct_str[0] = '\0';
+    } else {
         strip_newline(correct_str);
         to_lower(correct_str);
     }
@@ -336,6 +346,7 @@ void get_positions(char *pattern, const char *guess, const char *correct_str)
                 }
             }
         }
+        /* EOF is treated as no positions */
     }
 }
 
@@ -562,26 +573,201 @@ int prompt_action(GameState *game)
     return 0;  /* EOF */
 }
 
+/* Find a word in the word list, returns index or -1 */
+int find_word(const char *word)
+{
+    int i;
+    for (i = 0; i < WORD_COUNT; i++) {
+        if (strcmp(words[i], word) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* Print a guess with colored feedback against a target word */
+void print_guess_result(const char *guess, const char *target)
+{
+    int i;
+    int target_counts[26];
+    int exact[5];
+    int color[5]; /* 0=incorrect, 1=wrong position, 2=correct */
+
+    memset(target_counts, 0, sizeof(target_counts));
+    memset(exact, 0, sizeof(exact));
+    memset(color, 0, sizeof(color));
+
+    /* Count letters in target */
+    for (i = 0; i < 5; i++) {
+        target_counts[target[i] - 'a']++;
+    }
+
+    /* First pass: mark exact matches */
+    for (i = 0; i < 5; i++) {
+        if (guess[i] == target[i]) {
+            exact[i] = 1;
+            color[i] = 2;
+            target_counts[guess[i] - 'a']--;
+        }
+    }
+
+    /* Second pass: mark wrong positions */
+    for (i = 0; i < 5; i++) {
+        if (!exact[i] && target_counts[guess[i] - 'a'] > 0) {
+            color[i] = 1;
+            target_counts[guess[i] - 'a']--;
+        }
+    }
+
+    /* Print with colors */
+    for (i = 0; i < 5; i++) {
+        if (color[i] == 2) {
+            printf("\033[97;44m%c\033[0m", guess[i]);
+        } else if (color[i] == 1) {
+            printf("\033[97;45m%c\033[0m", guess[i]);
+        } else {
+            printf("\033[90;40m%c\033[0m", guess[i]);
+        }
+    }
+    printf("\n");
+}
+
+/* Prompt for new game or quit. Returns 0 to quit, 1 for new game. */
+int prompt_new_or_quit(GameState *game)
+{
+    char input[MAX_INPUT];
+    char choice;
+
+    printf("\nStart a (n)ew game or (q)uit? ");
+    fflush(stdout);
+    if (fgets(input, MAX_INPUT, stdin)) {
+        choice = tolower((unsigned char)input[0]);
+        if (choice == 'q') {
+            return 0;
+        }
+        reset_game(game);
+        printf("\n=== STARTING NEW GAME ===\n\n");
+        return 1;
+    }
+    return 0;
+}
+
+/* Check if pattern is fully solved (no dots) */
+int pattern_solved(const char *pattern)
+{
+    int i;
+    for (i = 0; i < 5; i++) {
+        if (pattern[i] == '.') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int main(void)
 {
     GameState game;
+    char input[MAX_INPUT];
+    int mode; /* 0=play, 1=solve */
+    char target[6];
 
     srand((unsigned int)time(NULL));
     reset_game(&game);
 
-    while (1) {
-        char guess[MAX_INPUT];
+    /* Mode selection */
+    printf("Would you like to (p)lay or (s)olve? ");
+    fflush(stdout);
+    mode = 1;
+    if (!fgets(input, MAX_INPUT, stdin)) {
+        return 0;
+    }
+    if (tolower((unsigned char)input[0]) == 'p') {
+        mode = 0;
+    }
 
-        compute_suggestions(&game);
-        show_round_info(&game);
-        get_guess(&game, guess);
+    if (mode == 0) {
+        /* Play mode */
+        strncpy(target, words[rand() % WORD_COUNT], 5);
+        target[5] = '\0';
 
-        if (!is_empty(guess)) {
-            process_round(&game, guess);
-            game.guess_number++;
-        } else {
-            if (!prompt_action(&game)) {
+        while (1) {
+            int round;
+            int won = 0;
+
+            for (round = 1; round <= 6; round++) {
+                char guess[6];
+
+                game.guess_number = round;
+                get_guess(&game, guess, sizeof(guess));
+
+                if (is_empty(guess)) {
+                    if (!prompt_action(&game)) {
+                        return 0;
+                    }
+                    round = game.guess_number - 1;
+                    continue;
+                }
+
+                if (find_word(guess) < 0) {
+                    printf("Not in word list. Try again.\n");
+                    round--;
+                    continue;
+                }
+
+                print_guess_result(guess, target);
+
+                if (strcmp(guess, target) == 0) {
+                    printf("You win! Got it in %d guess%s.\n",
+                           round, round == 1 ? "" : "es");
+                    won = 1;
+                    break;
+                }
+            }
+
+            if (!won) {
+                printf("You lose! The word was %s.\n", target);
+            }
+
+            if (!prompt_new_or_quit(&game)) {
                 break;
+            }
+            strncpy(target, words[rand() % WORD_COUNT], 5);
+            target[5] = '\0';
+        }
+    } else {
+        /* Solve mode */
+        while (1) {
+            char guess[6];
+
+            compute_suggestions(&game);
+            show_round_info(&game);
+
+            if (game.matches_count == 1) {
+                if (!prompt_action(&game)) {
+                    break;
+                }
+                continue;
+            }
+
+            get_guess(&game, guess, sizeof(guess));
+
+            if (!is_empty(guess)) {
+                strncpy(game.guess, guess, 5);
+                game.guess[5] = '\0';
+                process_round(&game, guess);
+                game.guess_number++;
+
+                /* Check if pattern is fully solved */
+                if (pattern_solved(game.pattern)) {
+                    printf("\nSolved: %s\n", game.pattern);
+                    if (!prompt_new_or_quit(&game)) {
+                        break;
+                    }
+                }
+            } else {
+                if (!prompt_action(&game)) {
+                    break;
+                }
             }
         }
     }
