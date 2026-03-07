@@ -54,6 +54,13 @@ int char_in_str(char c, const char *str)
     return 0;
 }
 
+/* Copy string with guaranteed null termination */
+void copy_string(char *dest, const char *src, int len)
+{
+    strncpy(dest, src, len);
+    dest[len - 1] = '\0';
+}
+
 /* Add a letter to a bitmask */
 void add_letter(unsigned int *mask, char c)
 {
@@ -263,7 +270,7 @@ void to_lower(char *str)
 /* Strip newline from end of string */
 void strip_newline(char *str)
 {
-    int len = strlen(str);
+    size_t len = strlen(str);
     while (len > 0 && (str[len-1] == '\n' || str[len-1] == '\r')) {
         str[--len] = '\0';
     }
@@ -311,7 +318,7 @@ void get_guess(GameState *game, char *guess, int len)
             break;  /* Allow empty input */
         }
     } while (strlen(buf) != (size_t)(len - 1));
-    memcpy(guess, buf, len);
+    copy_string(guess, buf, len);
 }
 
 /* Get correct letters from user */
@@ -448,8 +455,7 @@ void compute_suggestions(GameState *game)
     game->suggestions_count = 0;
     for (i = 0; i < MAX_SUGGESTIONS; i++) {
         if (top_indices[i] >= 0) {
-            strncpy(game->suggestions[i], words[top_indices[i]], 5);
-            game->suggestions[i][5] = '\0';
+            copy_string(game->suggestions[i], words[top_indices[i]], sizeof(game->suggestions[i]));
             game->suggestion_scores[i] = top_scores[i];
             game->suggestions_count++;
         } else {
@@ -465,8 +471,7 @@ void compute_suggestions(GameState *game)
                                            game->wrong_position, used);
     for (i = 0; i < MAX_MATCHES; i++) {
         if (match_indices[i] >= 0) {
-            strncpy(game->matches[i], words[match_indices[i]], 5);
-            game->matches[i][5] = '\0';
+            copy_string(game->matches[i], words[match_indices[i]], sizeof(game->matches[i]));
             game->match_scores[i] = match_scores[i];
         } else {
             game->matches[i][0] = '\0';
@@ -477,8 +482,7 @@ void compute_suggestions(GameState *game)
     /* Determine next guess */
     game->next_guess[0] = '\0';
     if (game->matches_count <= 5 && game->matches[0][0] != '\0') {
-        strncpy(game->next_guess, game->matches[0], 5);
-        game->next_guess[5] = '\0';
+        copy_string(game->next_guess, game->matches[0], sizeof(game->next_guess));
     } else if (game->guess_number == 1) {
         strcpy(game->next_guess, "neato");
     } else if (game->guess_number == 2) {
@@ -486,11 +490,9 @@ void compute_suggestions(GameState *game)
     } else {
         int rand_idx = rand() % MAX_SUGGESTIONS;
         if (game->suggestions[rand_idx][0] != '\0') {
-            strncpy(game->next_guess, game->suggestions[rand_idx], 5);
-            game->next_guess[5] = '\0';
+            copy_string(game->next_guess, game->suggestions[rand_idx], sizeof(game->next_guess));
         } else if (game->suggestions[0][0] != '\0') {
-            strncpy(game->next_guess, game->suggestions[0], 5);
-            game->next_guess[5] = '\0';
+            copy_string(game->next_guess, game->suggestions[0], sizeof(game->next_guess));
         }
     }
 }
@@ -593,6 +595,14 @@ void print_guess_result(const char *guess, const char *target)
     int exact[5];
     int color[5]; /* 0=incorrect, 1=wrong position, 2=correct */
 
+    /* Validate that all characters are lowercase a-z */
+    for (i = 0; i < 5; i++) {
+        if (guess[i] < 'a' || guess[i] > 'z' || target[i] < 'a' || target[i] > 'z') {
+            printf("Error: invalid characters in guess or target\n");
+            return;
+        }
+    }
+
     memset(target_counts, 0, sizeof(target_counts));
     memset(exact, 0, sizeof(exact));
     memset(color, 0, sizeof(color));
@@ -687,8 +697,7 @@ int main(void)
 
     if (mode == 0) {
         /* Play mode */
-        strncpy(target, words[rand() % WORD_COUNT], 5);
-        target[5] = '\0';
+        copy_string(target, words[rand() % WORD_COUNT], sizeof(target));
 
         while (1) {
             int round;
@@ -731,8 +740,7 @@ int main(void)
             if (!prompt_new_or_quit(&game)) {
                 break;
             }
-            strncpy(target, words[rand() % WORD_COUNT], 5);
-            target[5] = '\0';
+            copy_string(target, words[rand() % WORD_COUNT], sizeof(target));
         }
     } else {
         /* Solve mode */
@@ -752,8 +760,7 @@ int main(void)
             get_guess(&game, guess, sizeof(guess));
 
             if (!is_empty(guess)) {
-                strncpy(game.guess, guess, 5);
-                game.guess[5] = '\0';
+                copy_string(game.guess, guess, sizeof(game.guess));
                 process_round(&game, guess);
                 game.guess_number++;
 
