@@ -1,6 +1,5 @@
 const char *letter_frequency = "etaoinsrhldcumfpgwybvkxjqz";
-#define WORD_COUNT 5757
-static const char *words[] = {
+const char *words[] = {
     "which",
     "there",
     "their",
