@@ -674,12 +674,100 @@ int pattern_solved(const char *pattern)
     return 1;
 }
 
+/* Play mode loop */
+void play_mode(GameState *game)
+{
+    char target[6];
+
+    copy_string(target, words[rand() % WORD_COUNT], sizeof(target));
+
+    while (1) {
+        int round;
+        int won = 0;
+
+        for (round = 1; round <= 6; round++) {
+            char guess[6];
+
+            game->guess_number = round;
+            get_guess(game, guess, sizeof(guess));
+
+            if (is_empty(guess)) {
+                if (!prompt_action(game)) {
+                    return;
+                }
+                round = game->guess_number - 1;
+                continue;
+            }
+
+            if (find_word(guess) < 0) {
+                printf("Not in word list. Try again.\n");
+                round--;
+                continue;
+            }
+
+            print_guess_result(guess, target);
+
+            if (strcmp(guess, target) == 0) {
+                printf("You win! Got it in %d guess%s.\n",
+                       round, round == 1 ? "" : "es");
+                won = 1;
+                break;
+            }
+        }
+
+        if (!won) {
+            printf("You lose! The word was %s.\n", target);
+        }
+
+        if (!prompt_new_or_quit(game)) {
+            break;
+        }
+        copy_string(target, words[rand() % WORD_COUNT], sizeof(target));
+    }
+}
+
+/* Solve mode loop */
+void solve_mode(GameState *game)
+{
+    while (1) {
+        char guess[6];
+
+        compute_suggestions(game);
+        show_round_info(game);
+
+        if (game->matches_count == 1) {
+            if (!prompt_action(game)) {
+                break;
+            }
+            continue;
+        }
+
+        get_guess(game, guess, sizeof(guess));
+
+        if (!is_empty(guess)) {
+            copy_string(game->guess, guess, sizeof(game->guess));
+            process_round(game, guess);
+            game->guess_number++;
+
+            /* Check if pattern is fully solved */
+            if (pattern_solved(game->pattern)) {
+                printf("\nSolved: %s\n", game->pattern);
+                if (!prompt_new_or_quit(game)) {
+                    break;
+                }
+            }
+        } else {
+            if (!prompt_action(game)) {
+                break;
+            }
+        }
+    }
+}
+
 int main(void)
 {
     GameState game;
     char input[MAX_INPUT];
-    int mode; /* 0=play, 1=solve */
-    char target[6];
 
     srand((unsigned int)time(NULL));
     reset_game(&game);
@@ -687,96 +775,14 @@ int main(void)
     /* Mode selection */
     printf("Would you like to (p)lay or (s)olve? ");
     fflush(stdout);
-    mode = 1;
     if (!fgets(input, MAX_INPUT, stdin)) {
         return 0;
     }
+
     if (tolower((unsigned char)input[0]) == 'p') {
-        mode = 0;
-    }
-
-    if (mode == 0) {
-        /* Play mode */
-        copy_string(target, words[rand() % WORD_COUNT], sizeof(target));
-
-        while (1) {
-            int round;
-            int won = 0;
-
-            for (round = 1; round <= 6; round++) {
-                char guess[6];
-
-                game.guess_number = round;
-                get_guess(&game, guess, sizeof(guess));
-
-                if (is_empty(guess)) {
-                    if (!prompt_action(&game)) {
-                        return 0;
-                    }
-                    round = game.guess_number - 1;
-                    continue;
-                }
-
-                if (find_word(guess) < 0) {
-                    printf("Not in word list. Try again.\n");
-                    round--;
-                    continue;
-                }
-
-                print_guess_result(guess, target);
-
-                if (strcmp(guess, target) == 0) {
-                    printf("You win! Got it in %d guess%s.\n",
-                           round, round == 1 ? "" : "es");
-                    won = 1;
-                    break;
-                }
-            }
-
-            if (!won) {
-                printf("You lose! The word was %s.\n", target);
-            }
-
-            if (!prompt_new_or_quit(&game)) {
-                break;
-            }
-            copy_string(target, words[rand() % WORD_COUNT], sizeof(target));
-        }
+        play_mode(&game);
     } else {
-        /* Solve mode */
-        while (1) {
-            char guess[6];
-
-            compute_suggestions(&game);
-            show_round_info(&game);
-
-            if (game.matches_count == 1) {
-                if (!prompt_action(&game)) {
-                    break;
-                }
-                continue;
-            }
-
-            get_guess(&game, guess, sizeof(guess));
-
-            if (!is_empty(guess)) {
-                copy_string(game.guess, guess, sizeof(game.guess));
-                process_round(&game, guess);
-                game.guess_number++;
-
-                /* Check if pattern is fully solved */
-                if (pattern_solved(game.pattern)) {
-                    printf("\nSolved: %s\n", game.pattern);
-                    if (!prompt_new_or_quit(&game)) {
-                        break;
-                    }
-                }
-            } else {
-                if (!prompt_action(&game)) {
-                    break;
-                }
-            }
-        }
+        solve_mode(&game);
     }
 
     return 0;
