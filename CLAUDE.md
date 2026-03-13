@@ -46,7 +46,7 @@ The program uses **bitmasks** extensively for efficient letter tracking:
 
 1. **Suggestion Words** - Maximize coverage of unused letters weighted by frequency
    - Scored by `score_word()` which counts unique unused letters × frequency rank
-   - Used for exploratory guesses (1st-3rd guesses follow a strategy: neato → lurid → random from top 5)
+   - Used for exploratory guesses (1st-3rd guesses follow a strategy: atone → lurid → random from top 5)
 
 2. **Matching Words** - Satisfy all known constraints (pattern, correct letters, wrong positions)
    - Filtered through pattern matching, letter requirements, and position exclusions

@@ -323,7 +323,7 @@ void compute_suggestions(GameState *game)
     if (game->matches_count <= 5 && game->matches[0][0] != '\0') {
         copy_string(game->next_guess, game->matches[0], sizeof(game->next_guess));
     } else if (game->guess_number == 1) {
-        strcpy(game->next_guess, "neato");
+        strcpy(game->next_guess, "atone");
     } else if (game->guess_number == 2) {
         strcpy(game->next_guess, "lurid");
     } else {

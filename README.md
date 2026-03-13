@@ -21,7 +21,7 @@ The program maintains a database of 5,757 five-letter words and uses a two-stage
 1. **Suggestion words** - Maximizes coverage of untried letters, weighted by English letter frequency (e, t, a, o, ... are worth more). Used for early exploratory guesses.
 2. **Matching words** - Filters the full word list against all known constraints (correct positions, required letters, eliminated letters, wrong-position constraints). Once 5 or fewer matches remain, it suggests the highest-scored match directly.
 
-The default opening strategy is **neato** followed by **lurid**, which together cover 10 of the most common letters, including all 5 vowels.
+The default opening strategy is **atone** followed by **lurid**, which together cover 10 of the most common letters, including all 5 vowels.
 
 ## Usage
 
@@ -48,9 +48,9 @@ Press **Enter** with an empty guess to pause the game, where you can continue, s
 4. stoae (score: 118)
 5. orate (score: 117)
 
-My next guess is neato.
+My next guess is atone.
 
-Enter guess word (5 letters, or press Enter to quit): neato
+Enter guess word (5 letters, or press Enter to quit): atone
 Enter correct letters from guess (or press Enter for none): et
 Enter correct positions (1-5, e.g., '14' for positions 1 and 4, or Enter for none): 
 
